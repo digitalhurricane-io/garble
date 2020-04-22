@@ -122,15 +122,18 @@ type importedPkg struct {
 }
 
 func main1() int {
-	//flagSet.String("gco", "/tmp/random-dir", "Path to output garbled code")
+	log.SetPrefix("[garble] ")
+
+	flagSet.String("gco", "/tmp/random-dir", "Path to output garbled code")
 
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return 2
 	}
 
-	//fmt.Println(flagSet.Lookup("gco").Value)
+	if err := garbleFlagsToEnv(); err != nil {
+		return 2
+	}
 
-	log.SetPrefix("[garble] ")
 	args := flagSet.Args()
 
 	if len(args) < 1 {
@@ -141,6 +144,22 @@ func main1() int {
 		return 1
 	}
 	return 0
+}
+
+// Sets flags provided to garble as environmental variables so that they will
+// be available when go build is run
+func garbleFlagsToEnv() error {
+
+	if wasFlagPassed(flagSet, "gco") {
+		outputDir := flagSet.Lookup("gco").Value.String()
+		err := os.Setenv("GARBLED_CODE_OUTPUT_DIR", outputDir)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func mainErr(args []string) error {
@@ -235,10 +254,7 @@ var transformFuncs = map[string]func([]string) ([]string, error){
 }
 
 func transformCompile(args []string) ([]string, error) {
-	fmt.Println("args: ", args)
 	flags, paths := splitFlagsFromFiles(args, ".go")
-	fmt.Println("FLAGS: ", flags)
-	fmt.Println("Paths: ", paths)
 	if len(paths) == 0 {
 		// Nothing to transform; probably just ["-V=full"].
 		return args, nil
@@ -250,11 +266,9 @@ func transformCompile(args []string) ([]string, error) {
 			break
 		}
 	}
-	fmt.Println("RAN 2")
 	if len(paths) == 1 && filepath.Base(paths[0]) == "_testmain.go" {
 		return args, nil
 	}
-	fmt.Println("RAN 3")
 
 	// If the value of -trimpath doesn't contain the separator ';', the 'go
 	// build' command is most likely not using '-trimpath'.
@@ -287,7 +301,7 @@ func transformCompile(args []string) ([]string, error) {
 		return nil, fmt.Errorf("typecheck error: %v", err)
 	}
 
-	outputDir, err := getGarbledCodeOutputDir()
+	outDir, err := getGarbledCodeOutputDir()
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +309,7 @@ func transformCompile(args []string) ([]string, error) {
 	// Add our temporary dir to the beginning of -trimpath, so that we don't
 	// leak temporary dirs. Needs to be at the beginning, since there may be
 	// shorter prefixes later in the list, such as $PWD if TMPDIR=$PWD/tmp.
-	flags = flagSetValue(flags, "-trimpath", outputDir+"=>;"+trimpath)
+	flags = flagSetValue(flags, "-trimpath", outDir+"=>;"+trimpath)
 	// log.Println(flags)
 	args = flags
 	// TODO: randomize the order and names of the files
@@ -311,7 +325,7 @@ func transformCompile(args []string) ([]string, error) {
 		default:
 			file = transformGo(file, info)
 		}
-		tempFile := filepath.Join(outputDir, name)
+		tempFile := filepath.Join(outDir, name)
 		f, err := os.Create(tempFile)
 		if err != nil {
 			return nil, err
@@ -328,7 +342,7 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	// obfuscate strings
-	err = ObfuscateStrings(outputDir)
+	err = ObfuscateStrings(outDir)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -337,12 +351,12 @@ func transformCompile(args []string) ([]string, error) {
 	return args, nil
 }
 
+// Either return the directory specified by the user, or
+// create a temp directory
 func getGarbledCodeOutputDir() (string, error) {
-	fmt.Println("AAAAAAAAAAAAAAAA")
-	//fmt.Println(flagSet.Lookup("gco").Value)
-	if wasFlagPassed(flagSet, "gco") {
-		log.Println("gco flag was passes")
-		outputDir := flagSet.Lookup("gco").Value.String()
+	outputDir := os.Getenv("GARBLED_CODE_OUTPUT_DIR")
+	if outputDir != "" {
+		// user passed an output dir as an argument, lets use it
 		return outputDir, nil
 	}
 
