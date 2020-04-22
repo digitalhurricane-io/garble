@@ -366,6 +366,8 @@ func transformCompile(args []string) ([]string, error) {
 }
 
 // Is it the main package being compiled, or one of it's subpackages?
+// If the user supplied the package-name flag, then we only want to obfuscate
+// their package and it's subpackages
 func isOurCode(args []string) bool {
 	packageName := os.Getenv("PACKAGE_NAME")
 	if packageName == "" {
