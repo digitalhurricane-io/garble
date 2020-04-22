@@ -208,7 +208,7 @@ func mainErr(args []string) error {
 		return fmt.Errorf("unknown tool: %q", tool)
 	}
 	transformed := args[1:]
-	// log.Println(tool, transformed)
+	//log.Println(tool, transformed)
 	if transform != nil {
 		var err error
 		if transformed, err = transform(transformed); err != nil {
@@ -254,6 +254,7 @@ var transformFuncs = map[string]func([]string) ([]string, error){
 }
 
 func transformCompile(args []string) ([]string, error) {
+
 	flags, paths := splitFlagsFromFiles(args, ".go")
 	if len(paths) == 0 {
 		// Nothing to transform; probably just ["-V=full"].
@@ -267,6 +268,10 @@ func transformCompile(args []string) ([]string, error) {
 		}
 	}
 	if len(paths) == 1 && filepath.Base(paths[0]) == "_testmain.go" {
+		return args, nil
+	}
+
+	if !isOurCode(args) {
 		return args, nil
 	}
 
@@ -349,6 +354,22 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	return args, nil
+}
+
+// Is it the main package being compiled, or one of it's subpackages?
+func isOurCode(args []string) bool {
+	baseDirectory := filepath.Base(os.Getenv("GARBLE_DIR"))
+	return baseDirectory == getBasePkgName(args)
+}
+
+func getBasePkgName(args []string) string {
+	pathArg := args[3]
+	pathArgSplit := strings.Split(pathArg, "=>")
+	packageName := pathArgSplit[len(pathArgSplit)-1]
+
+	pkgNameSplit := strings.Split(packageName, "/")
+	basePkgName := pkgNameSplit[0]
+	return basePkgName
 }
 
 // Either return the directory specified by the user, or
