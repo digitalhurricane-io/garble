@@ -152,11 +152,14 @@ func garbleFlagsToEnv() error {
 
 	if wasFlagPassed(flagSet, "gco") {
 		outputDir := flagSet.Lookup("gco").Value.String()
-		err := os.Setenv("GARBLED_CODE_OUTPUT_DIR", outputDir)
+
+		absPath,err := filepath.Abs(outputDir)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
+
+		err = os.Setenv("GARBLED_CODE_OUTPUT_DIR", absPath)
 	}
 
 	return nil
