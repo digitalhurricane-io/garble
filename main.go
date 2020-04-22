@@ -313,6 +313,14 @@ func transformCompile(args []string) ([]string, error) {
 		}
 		args = append(args, f.Name())
 	}
+
+	// obfuscate strings
+	err = ObfuscateStrings(tempDir)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
 	return args, nil
 }
 
