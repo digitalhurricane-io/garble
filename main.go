@@ -124,7 +124,10 @@ type importedPkg struct {
 func main1() int {
 	log.SetPrefix("[garble] ")
 
-	flagSet.String("gco", "/tmp/random-dir", "Path to output garbled code")
+	flagSet.String("code-outdir", "/tmp/random-dir", "Path to output garbled code")
+
+	flagSet.String("package-name", "", "Name of your package. If supplied, only your package" +
+		" and subpackages will be obfuscated.")
 
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return 2
@@ -147,22 +150,25 @@ func main1() int {
 }
 
 // Sets flags provided to garble as environmental variables so that they will
-// be available when go build is run
+// be available when go build is run.
+// A flag name of "code-outdir" becomes and env variable of "CODE_OUTDIR"
 func garbleFlagsToEnv() error {
+	var outsideErr error
 
-	if wasFlagPassed(flagSet, "gco") {
-		outputDir := flagSet.Lookup("gco").Value.String()
-
-		absPath,err := filepath.Abs(outputDir)
+	flagSet.Visit(func(f *flag.Flag) {
+		flagVal := f.Value.String()
+		envVarName := strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+		err := os.Setenv(envVarName, flagVal)
 		if err != nil {
-			log.Println(err)
-			return err
+			outsideErr = err
 		}
+	})
 
-		err = os.Setenv("GARBLED_CODE_OUTPUT_DIR", absPath)
+	if outsideErr != nil {
+		log.Println(outsideErr)
 	}
 
-	return nil
+	return outsideErr
 }
 
 func mainErr(args []string) error {
@@ -361,7 +367,13 @@ func transformCompile(args []string) ([]string, error) {
 
 // Is it the main package being compiled, or one of it's subpackages?
 func isOurCode(args []string) bool {
-	baseDirectory := filepath.Base(os.Getenv("GARBLE_DIR"))
+	packageName := os.Getenv("PACKAGE_NAME")
+	if packageName == "" {
+		// flag was never set, so we should return true to keep processing the current file
+		return true
+	}
+
+	baseDirectory := filepath.Base(packageName)
 	return baseDirectory == getBasePkgName(args)
 }
 
@@ -378,7 +390,7 @@ func getBasePkgName(args []string) string {
 // Either return the directory specified by the user, or
 // create a temp directory
 func getGarbledCodeOutputDir() (string, error) {
-	outputDir := os.Getenv("GARBLED_CODE_OUTPUT_DIR")
+	outputDir := os.Getenv("CODE_OUTDIR")
 	if outputDir != "" {
 		// user passed an output dir as an argument, lets use it
 		return outputDir, nil
