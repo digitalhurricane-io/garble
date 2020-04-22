@@ -35,12 +35,16 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `
 Usage of garble:
 
-	garble build [build flags] [packages]
+	garble [garble flags] build [build flags] [packages]
 
-which is equivalent to the longer:
+Which is equivalent to the longer:
 
 	go build -a -trimpath -toolexec=garble [build flags] [packages]
+
+Garble Flags:
+
 `[1:])
+
 	flagSet.PrintDefaults()
 	os.Exit(2)
 }
@@ -118,11 +122,17 @@ type importedPkg struct {
 }
 
 func main1() int {
+	//flagSet.String("gco", "/tmp/random-dir", "Path to output garbled code")
+
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return 2
 	}
+
+	//fmt.Println(flagSet.Lookup("gco").Value)
+
 	log.SetPrefix("[garble] ")
 	args := flagSet.Args()
+
 	if len(args) < 1 {
 		flagSet.Usage()
 	}
@@ -225,7 +235,10 @@ var transformFuncs = map[string]func([]string) ([]string, error){
 }
 
 func transformCompile(args []string) ([]string, error) {
+	fmt.Println("args: ", args)
 	flags, paths := splitFlagsFromFiles(args, ".go")
+	fmt.Println("FLAGS: ", flags)
+	fmt.Println("Paths: ", paths)
 	if len(paths) == 0 {
 		// Nothing to transform; probably just ["-V=full"].
 		return args, nil
@@ -237,9 +250,11 @@ func transformCompile(args []string) ([]string, error) {
 			break
 		}
 	}
+	fmt.Println("RAN 2")
 	if len(paths) == 1 && filepath.Base(paths[0]) == "_testmain.go" {
 		return args, nil
 	}
+	fmt.Println("RAN 3")
 
 	// If the value of -trimpath doesn't contain the separator ';', the 'go
 	// build' command is most likely not using '-trimpath'.
@@ -272,17 +287,15 @@ func transformCompile(args []string) ([]string, error) {
 		return nil, fmt.Errorf("typecheck error: %v", err)
 	}
 
-	tempDir, err := ioutil.TempDir("", "garble-build")
+	outputDir, err := getGarbledCodeOutputDir()
 	if err != nil {
 		return nil, err
 	}
-	deferred = append(deferred, func() error {
-		return os.RemoveAll(tempDir)
-	})
+
 	// Add our temporary dir to the beginning of -trimpath, so that we don't
 	// leak temporary dirs. Needs to be at the beginning, since there may be
 	// shorter prefixes later in the list, such as $PWD if TMPDIR=$PWD/tmp.
-	flags = flagSetValue(flags, "-trimpath", tempDir+"=>;"+trimpath)
+	flags = flagSetValue(flags, "-trimpath", outputDir+"=>;"+trimpath)
 	// log.Println(flags)
 	args = flags
 	// TODO: randomize the order and names of the files
@@ -298,7 +311,7 @@ func transformCompile(args []string) ([]string, error) {
 		default:
 			file = transformGo(file, info)
 		}
-		tempFile := filepath.Join(tempDir, name)
+		tempFile := filepath.Join(outputDir, name)
 		f, err := os.Create(tempFile)
 		if err != nil {
 			return nil, err
@@ -315,13 +328,36 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	// obfuscate strings
-	err = ObfuscateStrings(tempDir)
+	err = ObfuscateStrings(outputDir)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
 	return args, nil
+}
+
+func getGarbledCodeOutputDir() (string, error) {
+	fmt.Println("AAAAAAAAAAAAAAAA")
+	//fmt.Println(flagSet.Lookup("gco").Value)
+	if wasFlagPassed(flagSet, "gco") {
+		log.Println("gco flag was passes")
+		outputDir := flagSet.Lookup("gco").Value.String()
+		return outputDir, nil
+	}
+
+	// since they didn't pass a dir, we use a temp dir
+	tempDir, err := ioutil.TempDir("", "garble-build-")
+	if err != nil {
+		return "", err
+	}
+
+	// clean up temp dir later
+	deferred = append(deferred, func() error {
+		return os.RemoveAll(tempDir)
+	})
+
+	return tempDir, nil
 }
 
 func readBuildIDs(flags []string) error {
