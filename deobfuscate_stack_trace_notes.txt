@@ -51,10 +51,14 @@ Once we've found the matching file, we can:
   - Replace the package name in the stack trace.
       At the moment, the package names aren't obfuscated, but they will be in the future.
   
-  - Loop through all identifiers in the file, hashing them until we get a mash for the function name.
+  - Loop through all function and method identifiers in the file, hashing them until we get a match for the identifier name.
       Then we can replace that in the stack trace.
       tip (Can save hashing result in map for further matching in other stack traces in log file)
 
   - Do that for each section of the stack trace.
 
   - Output final deobfuscated log file
+
+
+Caveats:
+  This will only work on our project code. Library code in a stack trace will not be deobfuscated.
