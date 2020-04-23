@@ -340,13 +340,13 @@ func transformCompile(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	// Add our temporary dir to the beginning of -trimpath, so that we don't
+	// Add our out dir to the beginning of -trimpath, so that we don't
 	// leak temporary dirs. Needs to be at the beginning, since there may be
 	// shorter prefixes later in the list, such as $PWD if TMPDIR=$PWD/tmp.
 	flags = flagSetValue(flags, "-trimpath", outDir+"=>;"+trimpath)
 	// log.Println(flags)
 	args = flags
-	// TODO: randomize the order and names of the files
+	// TODO: randomize the order of the files
 	for i, file := range files {
 		origName := filepath.Base(filepath.Clean(paths[i]))
 		name := fmt.Sprintf("%s.go", randomString(16))
@@ -358,6 +358,7 @@ func transformCompile(args []string) ([]string, error) {
 			// messy.
 			name = "_cgo_" + name
 		default:
+			//fmt.Printf("transforming %s\n", name)
 			file = transformGo(file, info)
 		}
 		tempFile := filepath.Join(outDir, name)
@@ -508,6 +509,10 @@ func hashWith(salt, value string) string {
 	return "z" + sum[:length]
 }
 
+func reasonNotHashed(name, reason, path string) {
+	fmt.Printf("Name: %s, Reason: %s Path: %s \n", name, reason, path);
+}
+
 // transformGo garbles the provided Go syntax node.
 func transformGo(file *ast.File, info *types.Info) *ast.File {
 	// Remove all comments, minus the "//go:" compiler directives.
@@ -526,60 +531,80 @@ func transformGo(file *ast.File, info *types.Info) *ast.File {
 	}
 
 	pre := func(cursor *astutil.Cursor) bool {
+		
 		switch node := cursor.Node().(type) {
+			
 		case *ast.Ident:
+			//fmt.Println("Original node name: ", node.Name)
+
 			if node.Name == "_" {
 				return true // unnamed remains unnamed
 			}
+
 			if strings.HasPrefix(node.Name, "_C") || strings.Contains(node.Name, "_cgo") {
 				return true // don't mess with cgo-generated code
 			}
+
 			obj := info.ObjectOf(node)
+
 			// log.Printf("%#v %T", node, obj)
+
 			switch x := obj.(type) {
+
 			case *types.Var:
 				if x.Embedded() {
 					obj = objOf(obj.Type())
 				} else if x.IsField() && x.Exported() {
 					// might be used for reflection, e.g.
 					// encoding/json without struct tags
+					//reasonNotHashed(node.Name, "Might be used for reflection", "")
 					return true
 				}
+
 			case *types.Const:
 			case *types.TypeName:
 			case *types.Func:
 				sign := obj.Type().(*types.Signature)
 				if obj.Exported() && sign.Recv() != nil {
+					//reasonNotHashed(node.Name, "Might implement an interface", "")
 					return true // might implement an interface
 				}
 				if implementedOutsideGo(x) {
+					//reasonNotHashed(node.Name, "implemented outside go", "")
 					return true // give up in this case
 				}
 				switch node.Name {
 				case "main", "init", "TestMain":
+					//reasonNotHashed(node.Name, "files we don't want to break", "")
 					return true // don't break them
 				}
 				if strings.HasPrefix(node.Name, "Test") && isTestSignature(sign) {
+					//reasonNotHashed(node.Name, "Is test", "")
 					return true // don't break tests
 				}
+
 			case nil:
 				switch cursor.Parent().(type) {
 				case *ast.AssignStmt:
 					// symbolic var v in v := expr.(type)
 				default:
+					//reasonNotHashed(node.Name, "hit default in nil case", "")
 					return true
 				}
 			default:
+				//reasonNotHashed(node.Name, "hit default in main case", "")
 				return true // we only want to rename the above
 			}
 			buildID := buildInfo.buildID
 			if obj != nil {
 				pkg := obj.Pkg()
 				if pkg == nil {
+					//reasonNotHashed(node.Name, "Universe scope", "")
 					return true // universe scope
 				}
 				path := pkg.Path()
 				if isStandardLibrary(path) {
+					//reasonNotHashed(node.Name, "Is standard lib", path)
 					return true // std isn't transformed
 				}
 				if id := buildInfo.imports[path].buildID; id != "" {
@@ -590,26 +615,36 @@ func transformGo(file *ast.File, info *types.Info) *ast.File {
 					// Check if the imported name wasn't
 					// garbled, e.g. if it's assembly.
 					if garbledPkg.Scope().Lookup(obj.Name()) != nil {
+						//reasonNotHashed(node.Name, "It is assembly or something", "")
 						return true
 					}
 					buildID = id
 				}
 			}
-			// orig := node.Name
+			//orig := node.Name
 			node.Name = hashWith(buildID, node.Name)
-			// log.Printf("%q hashed with %q to %q", orig, buildID, node.Name)
+			//log.Printf("%q hashed with %q to %q", orig, buildID, node.Name)
 		}
+		
 		return true
 	}
 	return astutil.Apply(file, pre, nil).(*ast.File)
 }
 
 func isStandardLibrary(path string) bool {
-	switch path {
-	case "main":
+	packageName := os.Getenv("PACKAGE_NAME")
+
+	if path == "main" {
 		// Main packages may not have fully qualified import paths, but
 		// they're not part of the standard library
 		return false
+	
+	} else if packageName != "" && strings.HasPrefix(path, packageName){
+		// We only have a package name if it was supplied as an argument.
+		// But if we have it, we can use it to know whether the path is from standard lib.
+		// TODO: come up with a better check for standard lib
+		return false
+
 	}
 	return !strings.Contains(path, ".")
 }
