@@ -124,9 +124,10 @@ type importedPkg struct {
 func main1() int {
 	log.SetPrefix("[garble] ")
 
-	flagSet.String("code-outdir", "/tmp/random-dir", "Path to output garbled code")
+	flagSet.String("code-outdir", "/tmp/some-random-dir", "Path to output garbled code")
 
-	flagSet.String("package-name", "", "Name of your package. If supplied, only your package" +
+	flagSet.String("package-name", "", "Name of your package. Same name as at the top of the go.mod file." + 
+	    " If supplied, only your package" +
 		" and subpackages will be obfuscated.")
 
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
@@ -156,8 +157,21 @@ func garbleFlagsToEnv() error {
 	var outsideErr error
 
 	flagSet.Visit(func(f *flag.Flag) {
+		flagName := f.Name
 		flagVal := f.Value.String()
+
+		// make sure path supplied is an absolute path
+		if flagName == "code-outdir" {
+			var err error
+			flagVal, err = filepath.Abs(flagVal)
+			if err != nil {
+				outsideErr = err
+				return
+			}
+		}
+
 		envVarName := strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+
 		err := os.Setenv(envVarName, flagVal)
 		if err != nil {
 			outsideErr = err
@@ -375,26 +389,25 @@ func isOurCode(args []string) bool {
 		return true
 	}
 
-	baseDirectory := filepath.Base(packageName)
-	return baseDirectory == getBasePkgName(args)
+	currentPackageName := pkgNameFromBuildArgs(args)
+	return strings.HasPrefix(currentPackageName, packageName)
 }
 
-func getBasePkgName(args []string) string {
+func pkgNameFromBuildArgs(args []string) string {
 	pathArg := args[3]
 	pathArgSplit := strings.Split(pathArg, "=>")
 	packageName := pathArgSplit[len(pathArgSplit)-1]
-
-	pkgNameSplit := strings.Split(packageName, "/")
-	basePkgName := pkgNameSplit[0]
-	return basePkgName
+	return packageName
 }
 
 // Either return the directory specified by the user, or
 // create a temp directory
 func getGarbledCodeOutputDir() (string, error) {
+
 	outputDir := os.Getenv("CODE_OUTDIR")
+
 	if outputDir != "" {
-		// user passed an output dir as an argument, lets use it
+		fmt.Println("using output dir: ", outputDir)
 		return outputDir, nil
 	}
 
