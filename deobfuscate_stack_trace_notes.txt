@@ -26,11 +26,13 @@ main.main()
 
 
 What needs to be changed first:
-  Filenames need to be hashes instead of random strings.
+  - Filenames need to be hashes instead of random strings.
 
-  Must combine package name and filename as different packages could have clashing filenames.
+    Must combine package name and filename as different packages could have clashing filenames.
 
-  sha256(package name + filename)
+    sha256(package name + filename)
+
+  - Output random salt to console and file after obfuscation.
 
 ----------------------
 
