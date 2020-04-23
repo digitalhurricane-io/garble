@@ -509,6 +509,7 @@ func hashWith(salt, value string) string {
 	return "z" + sum[:length]
 }
 
+// for debugging
 func reasonNotHashed(name, reason, path string) {
 	fmt.Printf("Name: %s, Reason: %s Path: %s \n", name, reason, path);
 }
@@ -686,12 +687,14 @@ func isTestSignature(sign *types.Signature) bool {
 }
 
 func transformLink(args []string) ([]string, error) {
+
 	flags, paths := splitFlagsFromFiles(args, ".a")
 	if len(paths) == 0 {
 		// Nothing to transform; probably just ["-V=full"].
 		return args, nil
 	}
 	flags = append(flags, "-w", "-s")
+
 	return append(flags, paths...), nil
 }
 

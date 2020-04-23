@@ -110,26 +110,45 @@ func (s *stringObfuscator) Less(i, j int) bool {
 	return s.Nodes[i].Pos() < s.Nodes[j].Pos()
 }
 
+// func obfuscatedStringCode(str string) []byte {
+// 	var res bytes.Buffer
+// 	res.WriteString("(func() string {\n")
+// 	res.WriteString("mask := []byte(\"")
+// 	mask := make([]byte, len(str))
+// 	for i := range mask {
+// 		mask[i] = byte(rand.Intn(256))
+// 		res.WriteString(fmt.Sprintf("\\x%02x", mask[i]))
+// 	}
+// 	res.WriteString("\")\nmaskedStr := []byte(\"")
+// 	for i, x := range []byte(str) {
+// 		res.WriteString(fmt.Sprintf("\\x%02x", x^mask[i]))
+// 	}
+// 	res.WriteString("\")\nres := make([]byte, ")
+// 	res.WriteString(strconv.Itoa(len(mask)))
+// 	res.WriteString(`)
+//         for i, m := range mask {
+//             res[i] = m ^ maskedStr[i]
+//         }
+//         return string(res)
+//         }())`)
+// 	return res.Bytes()
+// }
+
 func obfuscatedStringCode(str string) []byte {
 	var res bytes.Buffer
-	res.WriteString("(func() string {\n")
-	res.WriteString("mask := []byte(\"")
+	res.WriteString("(func() string {mask := []byte(\"")
+
 	mask := make([]byte, len(str))
 	for i := range mask {
 		mask[i] = byte(rand.Intn(256))
 		res.WriteString(fmt.Sprintf("\\x%02x", mask[i]))
 	}
-	res.WriteString("\")\nmaskedStr := []byte(\"")
+	res.WriteString("\"); maskedStr := []byte(\"")
 	for i, x := range []byte(str) {
 		res.WriteString(fmt.Sprintf("\\x%02x", x^mask[i]))
 	}
-	res.WriteString("\")\nres := make([]byte, ")
+	res.WriteString("\"); res := make([]byte, ")
 	res.WriteString(strconv.Itoa(len(mask)))
-	res.WriteString(`)
-        for i, m := range mask {
-            res[i] = m ^ maskedStr[i]
-        }
-        return string(res)
-        }())`)
+	res.WriteString("); for i, m := range mask { res[i] = m ^ maskedStr[i]}; return string(res)}())")
 	return res.Bytes()
 }
