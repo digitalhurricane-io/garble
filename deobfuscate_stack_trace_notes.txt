@@ -1,0 +1,58 @@
+
+On deobfuscating stack traces:
+
+Goal:
+  Given the original source code, a log file with obfuscated stack traces, 
+    and the salt originally used for hashing during obfuscation,
+    output a log file with deobfuscated stack traces.
+
+
+Required:
+
+- Original source
+- Salt used for hashing during obfuscation
+- Log file with obfuscated stack traces 
+
+
+Example stack trace:
+
+goroutine 1 [running]:
+github.com/paul/awesome/packagea.zo2u0gptf()
+        iauwDmAeLhcTGdBj.go:21 +0x41
+github.com/paul/awesome/packagea.ZpwGJD6T0()
+        iauwDmAeLhcTGdBj.go:17 +0x8b
+main.main()
+        DatdZNJZPQGLpJzK.go:13 +0x8b
+
+
+What needs to be changed first:
+  Filenames need to be hashes instead of random strings.
+
+  Must combine package name and filename as different packages could have clashing filenames.
+
+  sha256(package name + filename)
+
+----------------------
+
+Algorithm:
+
+Search through log file until we find a stack trace.
+
+Get the first filename.
+
+Loop through files in source, hashing their names until we get a match. sha256(original package name + original filename)
+   tip (Can save hasing results in map for further matching in other stack traces in log file)
+
+Once we've found the matching file, we can: 
+  - Replace the filename in the stacktrace with the original filname.
+
+  - Replace the package name in the stack trace.
+      At the moment, the package names aren't obfuscated, but they will be in the future.
+  
+  - Loop through all identifiers in the file, hashing them until we get a mash for the function name.
+      Then we can replace that in the stack trace.
+      tip (Can save hashing result in map for further matching in other stack traces in log file)
+
+  - Do that for each section of the stack trace.
+
+  - Output final deobfuscated log file
