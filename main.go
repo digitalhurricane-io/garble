@@ -23,13 +23,19 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-
+	"math/rand"
+	"time"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
 var flagSet = flag.NewFlagSet("garble", flag.ContinueOnError)
 
-func init() { flagSet.Usage = usage }
+func init() { 
+	flagSet.Usage = usage 
+
+	// so that our random strings are actually random
+	rand.Seed(time.Now().UnixNano())
+}
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `
@@ -343,7 +349,8 @@ func transformCompile(args []string) ([]string, error) {
 	// TODO: randomize the order and names of the files
 	for i, file := range files {
 		origName := filepath.Base(filepath.Clean(paths[i]))
-		name := fmt.Sprintf("z%d.go", i)
+		name := fmt.Sprintf("%s.go", randomString(16))
+		
 		switch {
 		case strings.HasPrefix(origName, "_cgo_"):
 			// Cgo generated code requires a prefix. Also, don't
@@ -407,7 +414,6 @@ func getGarbledCodeOutputDir() (string, error) {
 	outputDir := os.Getenv("CODE_OUTDIR")
 
 	if outputDir != "" {
-		fmt.Println("using output dir: ", outputDir)
 		return outputDir, nil
 	}
 
