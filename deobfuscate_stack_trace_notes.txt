@@ -43,15 +43,16 @@ Search through log file until we find a stack trace.
 Get the first filename.
 
 Loop through files in source, hashing their names until we get a match. sha256(original package name + original filename)
-   tip (Can save hasing results in map for further matching in other stack traces in log file)
+   tip (Can save hashing results in map for further matching in other stack traces in log file)
 
 Once we've found the matching file, we can: 
-  - Replace the filename in the stacktrace with the original filname.
+  - Replace the filename in the stacktrace with the original filename.
 
   - Replace the package name in the stack trace.
       At the moment, the package names aren't obfuscated, but they will be in the future.
   
   - Loop through all function and method identifiers in the file, hashing them until we get a match for the identifier name.
+      We only need to hash function and method names.
       Then we can replace that in the stack trace.
       tip (Can save hashing result in map for further matching in other stack traces in log file)
 

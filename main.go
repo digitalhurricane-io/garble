@@ -349,7 +349,10 @@ func transformCompile(args []string) ([]string, error) {
 	// TODO: randomize the order of the files
 	for i, file := range files {
 		origName := filepath.Base(filepath.Clean(paths[i]))
-		name := fmt.Sprintf("%s.go", randomString(16))
+
+		newName := hashFileName(origName, file)
+
+		name := fmt.Sprintf("%s.go", newName)
 		
 		switch {
 		case strings.HasPrefix(origName, "_cgo_"):
@@ -385,6 +388,22 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	return args, nil
+}
+
+// The hashed filename is a combination of the package name and file name
+// eg hash(pkgName + filename)
+func hashFileName(originalName string, file *ast.File) string {
+	pkgName := getPackageName(file)
+	combined := pkgName + originalName
+	return hashWith(buildInfo.buildID, combined)
+}
+
+func getPackageName(node ast.Node) string {
+    switch x := node.(type) {
+    case *ast.File:
+        return x.Name.String()
+    }
+    return ""
 }
 
 // Is it the main package being compiled, or one of it's subpackages?
