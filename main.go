@@ -7,25 +7,26 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/dchest/uniuri"
 	"go/ast"
 	"go/importer"
 	"go/parser"
 	"go/printer"
 	"go/token"
 	"go/types"
+	"golang.org/x/tools/go/ast/astutil"
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
+	"mvdan.cc/garble/hashing"
+	stringsG "mvdan.cc/garble/strings"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"math/rand"
 	"time"
-	"golang.org/x/tools/go/ast/astutil"
-	"mvdan.cc/garble/hashing"
-	"github.com/dchest/uniuri"
 )
 
 var flagSet = flag.NewFlagSet("garble", flag.ContinueOnError)
@@ -415,7 +416,7 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	// obfuscate strings
-	err = ObfuscateStrings(outDir)
+	err = stringsG.ObfuscateStrings(outDir)
 	if err != nil {
 		log.Println(err)
 		return nil, err
