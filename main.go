@@ -4,8 +4,6 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -26,6 +24,8 @@ import (
 	"math/rand"
 	"time"
 	"golang.org/x/tools/go/ast/astutil"
+	"mvdan.cc/garble/hashing"
+	"github.com/dchest/uniuri"
 )
 
 var flagSet = flag.NewFlagSet("garble", flag.ContinueOnError)
@@ -61,7 +61,6 @@ var (
 	deferred []func() error
 	fset     = token.NewFileSet()
 
-	b64             = base64.NewEncoding("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_z")
 	printerConfig   = printer.Config{Mode: printer.RawFormat}
 	origTypesConfig = types.Config{Importer: importer.ForCompiler(fset, "gc", origLookup)}
 
@@ -130,17 +129,24 @@ type importedPkg struct {
 func main1() int {
 	log.SetPrefix("[garble] ")
 
-	flagSet.String("code-outdir", "/tmp/some-random-dir", "Path to output garbled code")
+	flagSet.String("package-name", "", "Name of your package. Same name as at the top of the go.mod file. Required.")
 
-	flagSet.String("package-name", "", "Name of your package. Same name as at the top of the go.mod file." + 
-	    " If supplied, only your package" +
-		" and subpackages will be obfuscated.")
+	flagSet.String("code-outdir", "/tmp/some-random-dir", "Optional path to output garbled code")
+
+	flagSet.Bool("include-libs", false, "Pass true to garble libraries as well." +
+		" By default only your project code will be garbled.")
 
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return 2
 	}
 
 	if err := garbleFlagsToEnv(); err != nil {
+		log.Println(err)
+		return 2
+	}
+
+	if err := setSalt(); err != nil {
+		log.Println(err)
 		return 2
 	}
 
@@ -154,6 +160,33 @@ func main1() int {
 		return 1
 	}
 	return 0
+}
+
+// Since this program is restarted for compilation of each file,
+// and we need to use the same salt, we will set the salt as
+// and env variable.
+func getSalt() string {
+	return os.Getenv("SALT")
+}
+
+func setSalt() error {
+	salt := os.Getenv("SALT")
+	if salt != "" {
+		// salt has already been set
+		return nil
+	}
+
+	salt = uniuri.NewLen(50)
+	err := os.Setenv("SALT", salt)
+
+	// write salt to file
+	log.Println("Writing salt to file. The salt is needed to ungarble stacktraces in log files.")
+	err = ioutil.WriteFile("salt.txt", []byte(salt), 0644)
+	if err != nil {
+		return err
+	}
+
+	return  err
 }
 
 // Sets flags provided to garble as environmental variables so that they will
@@ -331,6 +364,7 @@ func transformCompile(args []string) ([]string, error) {
 		Uses: make(map[*ast.Ident]types.Object),
 	}
 	pkgPath := flagValue(flags, "-p")
+
 	if _, err := origTypesConfig.Check(pkgPath, fset, files, info); err != nil {
 		return nil, fmt.Errorf("typecheck error: %v", err)
 	}
@@ -350,7 +384,7 @@ func transformCompile(args []string) ([]string, error) {
 	for i, file := range files {
 		origName := filepath.Base(filepath.Clean(paths[i]))
 
-		newName := hashFileName(origName, file)
+		newName := hashing.HashFileName(getSalt(), origName, file)
 
 		name := fmt.Sprintf("%s.go", newName)
 		
@@ -388,22 +422,6 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	return args, nil
-}
-
-// The hashed filename is a combination of the package name and file name
-// eg hash(pkgName + filename)
-func hashFileName(originalName string, file *ast.File) string {
-	pkgName := getPackageName(file)
-	combined := pkgName + originalName
-	return hashWith(buildInfo.buildID, combined)
-}
-
-func getPackageName(node ast.Node) string {
-    switch x := node.(type) {
-    case *ast.File:
-        return x.Name.String()
-    }
-    return ""
 }
 
 // Is it the main package being compiled, or one of it's subpackages?
@@ -514,20 +532,6 @@ func buildidOf(path string) (string, error) {
 	return trimBuildID(string(out)), nil
 }
 
-func hashWith(salt, value string) string {
-	const length = 8
-
-	d := sha256.New()
-	io.WriteString(d, salt)
-	io.WriteString(d, value)
-	sum := b64.EncodeToString(d.Sum(nil))
-
-	if token.IsExported(value) {
-		return "Z" + sum[:length]
-	}
-	return "z" + sum[:length]
-}
-
 // for debugging
 func reasonNotHashed(name, reason, path string) {
 	fmt.Printf("Name: %s, Reason: %s Path: %s \n", name, reason, path);
@@ -615,7 +619,7 @@ func transformGo(file *ast.File, info *types.Info) *ast.File {
 				//reasonNotHashed(node.Name, "hit default in main case", "")
 				return true // we only want to rename the above
 			}
-			buildID := buildInfo.buildID
+			//buildID := buildInfo.buildID
 			if obj != nil {
 				pkg := obj.Pkg()
 				if pkg == nil {
@@ -638,11 +642,14 @@ func transformGo(file *ast.File, info *types.Info) *ast.File {
 						//reasonNotHashed(node.Name, "It is assembly or something", "")
 						return true
 					}
-					buildID = id
+					//buildID = id
 				}
 			}
 			//orig := node.Name
-			node.Name = hashWith(buildID, node.Name)
+
+			node.Name = hashing.HashWith(getSalt(), node.Name)
+			// node.Name = hashing.HashWith(buildID, node.Name)
+
 			//log.Printf("%q hashed with %q to %q", orig, buildID, node.Name)
 		}
 		
