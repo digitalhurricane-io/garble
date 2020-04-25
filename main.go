@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/dchest/uniuri"
@@ -21,6 +22,7 @@ import (
 	"math/rand"
 	"mvdan.cc/garble/hashing"
 	stringsG "mvdan.cc/garble/strings"
+	"mvdan.cc/garble/ungarble"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -130,23 +132,31 @@ type importedPkg struct {
 func main1() int {
 	log.SetPrefix("[garble] ")
 
-	flagSet.String("package-name", "", "Name of your package. Same name as at the top of the go.mod file. Required.")
+	// flags for garbling command
+	flagSet.String("package-name", "", "Name of your package. Same name as at the" +
+		" top of the go.mod file.")
 
-	flagSet.String("code-outdir", "/tmp/some-random-dir", "Optional path to output garbled code")
+	flagSet.String("code-outdir", "/tmp/some-random-dir", "Optional path to output garbled code.")
 
 	flagSet.Bool("include-libs", false, "Pass true to garble libraries as well." +
 		" By default only your project code will be garbled.")
+
+	// flags for ungarbling command
+	flagSet.String("log-file", "", "Path to the log file you want to ungarble. " +
+		"Required with the ungarble command")
+
+	flagSet.String("source-path", "", "Path to the directory containing the original source.")
+
+	flagSet.String("salt", "", "The salt output when you garbled the code. Absolutely required.")
+
+	flagSet.String("output-path", "", "Path to output the ungarbled log file." +
+		" Defaults to the current working directory.")
 
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return 2
 	}
 
 	if err := garbleFlagsToEnv(); err != nil {
-		log.Println(err)
-		return 2
-	}
-
-	if err := setSalt(); err != nil {
 		log.Println(err)
 		return 2
 	}
@@ -163,33 +173,6 @@ func main1() int {
 	return 0
 }
 
-// Since this program is restarted for compilation of each file,
-// and we need to use the same salt, we will set the salt as
-// and env variable.
-func getSalt() string {
-	return os.Getenv("SALT")
-}
-
-func setSalt() error {
-	salt := os.Getenv("SALT")
-	if salt != "" {
-		// salt has already been set
-		return nil
-	}
-
-	salt = uniuri.NewLen(50)
-	err := os.Setenv("SALT", salt)
-
-	// write salt to file
-	log.Println("Writing salt to file. The salt is needed to ungarble stacktraces in log files.")
-	err = ioutil.WriteFile("salt.txt", []byte(salt), 0644)
-	if err != nil {
-		return err
-	}
-
-	return  err
-}
-
 // Sets flags provided to garble as environmental variables so that they will
 // be available when go build is run.
 // A flag name of "code-outdir" becomes and env variable of "CODE_OUTDIR"
@@ -199,6 +182,8 @@ func garbleFlagsToEnv() error {
 	flagSet.Visit(func(f *flag.Flag) {
 		flagName := f.Name
 		flagVal := f.Value.String()
+
+		log.Printf("flagName: %s flagVal: %s", flagName, flagVal)
 
 		// make sure path supplied is an absolute path
 		if flagName == "code-outdir" {
@@ -228,7 +213,31 @@ func garbleFlagsToEnv() error {
 func mainErr(args []string) error {
 	// If we recognise an argument, we're not running within -toolexec.
 	switch cmd := args[0]; cmd {
+	case "ungarble":
+		// At this point, we've already set all flags as env variables.
+		// So we'll just pull them from there
+		logFilePath := os.Getenv("LOG_FILE")
+		sourcePath := os.Getenv("SOURCE_PATH")
+		salt := os.Getenv("SALT")
+		outputPath := os.Getenv("OUTPUT_PATH")
+
+		if logFilePath == "" || sourcePath == "" || salt == "" {
+			return errors.New("Missing required arguments. 'log-file', 'source-path', and 'salt' are all required")
+		}
+
+		err := ungarble.Ungarble(logFilePath, sourcePath, salt, outputPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
 	case "build", "test":
+		if err := setSalt(); err != nil {
+			log.Println(err)
+			return err
+		}
+
 		wd, err := os.Getwd()
 		if err != nil {
 			return err
@@ -292,6 +301,33 @@ func mainErr(args []string) error {
 		return err
 	}
 	return nil
+}
+
+// Since this program is restarted for compilation of each file,
+// and we need to use the same salt, we will set the salt as
+// and env variable.
+func getSalt() string {
+	return os.Getenv("SALT")
+}
+
+func setSalt() error {
+	salt := os.Getenv("SALT")
+	if salt != "" {
+		// salt has already been set
+		return nil
+	}
+
+	salt = uniuri.NewLen(50)
+	err := os.Setenv("SALT", salt)
+
+	// write salt to file
+	log.Println("Writing salt to file. The salt is needed to ungarble stacktraces in log files.")
+	err = ioutil.WriteFile("salt.txt", []byte(salt), 0644)
+	if err != nil {
+		return err
+	}
+
+	return  err
 }
 
 var transformFuncs = map[string]func([]string) ([]string, error){
