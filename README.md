@@ -10,7 +10,7 @@ Improvements over original:
 - Improved differentiation between standard library code and project code
 - Ability to specify output path for garbled code for inspection
 
-Installation:
+Installation (I need to fix import paths before you can auto install):
 
 	GO111MODULE=on go get -u github.com/digitalhurricane-io/garble
 
