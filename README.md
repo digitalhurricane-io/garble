@@ -10,9 +10,9 @@ Improvements over original:
 - Improved differentiation between standard library code and project code
 - Ability to specify output path for garbled code for inspection
 
-Installation (I need to fix import paths before you can auto install):
+Installation:
 
-	GO111MODULE=on go get -u github.com/digitalhurricane-io/garble
+	GO111MODULE=on git clone github.com/digitalhurricane-io/garble && cd garble && go install
 
 Obfuscate a Go build. Requires Go 1.13 or later.
 
