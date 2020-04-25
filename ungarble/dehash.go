@@ -159,7 +159,13 @@ func findOriginalIdentifier(fileInfo fileInfo, hashedName, salt string) string {
 		return original
 	}
 
-	log.Println("Failed to find original value for function with hashed name: ", hashedName)
+	if os.Getenv("VERBOSE") == "true" {
+		log.Printf("Either failed to find original value for function with name: %s Or else " +
+			" it wasn't hashed in the first place", hashedName)
+	}
+
+
 	// we didn't find it for some reason, so return the hashed version
+	// (it may be an identifier that was never hashed as well)
 	return hashedName
 }

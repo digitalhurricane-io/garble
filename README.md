@@ -1,6 +1,18 @@
 # garble
 
-	GO111MODULE=on go get mvdan.cc/garble
+This is a fork of https://github.com/mvdan/garble with several improvements.
+
+Improvements over original:
+
+- Ungarble stack traces in log files, outputting a new logfile
+- String obfuscation
+- Garble only project code, not libraries, unless a flag is passed
+- Improved differentiation between standard library code and project code
+- Ability to specify output path for garbled code for inspection
+
+Installation:
+
+	GO111MODULE=on go get -u github.com/digitalhurricane-io/garble
 
 Obfuscate a Go build. Requires Go 1.13 or later.
 
@@ -9,6 +21,10 @@ Obfuscate a Go build. Requires Go 1.13 or later.
 which is equivalent to the longer:
 
 	GARBLE_DIR="$PWD" go build -a -trimpath -toolexec=garble [build flags] [packages]
+
+Ungarble stack traces in a log file, outputting a new file:
+
+    garble -log-file ./logA.txt --source-path . -salt GCEEndhrmvOFKtRN2Y3U0VceR1SLLlKEvKVvYd2u0LDy4UkQaT ungarble
 
 ### Purpose
 

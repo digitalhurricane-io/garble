@@ -152,6 +152,8 @@ func main1() int {
 	flagSet.String("output-path", "", "Path to output the ungarbled log file." +
 		" Defaults to the current working directory.")
 
+	flagSet.Bool("verbose", false, "Show extra logging")
+
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return 2
 	}
@@ -183,8 +185,6 @@ func garbleFlagsToEnv() error {
 		flagName := f.Name
 		flagVal := f.Value.String()
 
-		//log.Printf("flagName: %s flagVal: %s", flagName, flagVal)
-
 		// make sure path supplied is an absolute path
 		switch flagName {
 
@@ -195,10 +195,8 @@ func garbleFlagsToEnv() error {
 		case "source-path":
 			fallthrough
 		case "output-path":
-			log.Println(flagName)
 			var err error
 			flagVal, err = filepath.Abs(flagVal)
-			log.Println(flagVal)
 			if err != nil {
 				outsideErr = err
 				return

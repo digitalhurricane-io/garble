@@ -1,11 +1,9 @@
 
 
-make a verbose mode. Normally, don't have it print errors when it can't ungarble something, as
-  it should always just be something that was never garbled in the first place.
 
 make it so flags can be passed after 'ungarble' command, instead of before it
 
-current example:
-garble -log-file /home/paul/Dev/proxyNetworkPro/goObfuscation/obsTest/logA.txt --source-path /home/paul/Dev/proxyNetworkPro/goObfuscation/obsTest -salt GCEEndhrmvOFKtRN2Y3U0VceR1SLLlKEvKVvYd2u0LDy4UkQaT ungarble
+Ungarble example:
+garble -log-file ./logA.txt --source-path . -salt GCEEndhrmvOFKtRN2Y3U0VceR1SLLlKEvKVvYd2u0LDy4UkQaT ungarble
 
 Add example usage
