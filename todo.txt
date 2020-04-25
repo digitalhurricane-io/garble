@@ -1,13 +1,11 @@
 
 
-make it so flags can be passed after 'ungarble' command, instead of before it
+make a verbose mode. Normally, don't have it print errors when it can't ungarble something, as
+  it should always just be something that was never garbled in the first place.
 
-don't require absolute paths
+make it so flags can be passed after 'ungarble' command, instead of before it
 
 current example:
 garble -log-file /home/paul/Dev/proxyNetworkPro/goObfuscation/obsTest/logA.txt --source-path /home/paul/Dev/proxyNetworkPro/goObfuscation/obsTest -salt GCEEndhrmvOFKtRN2Y3U0VceR1SLLlKEvKVvYd2u0LDy4UkQaT ungarble
-
-make a verbose mode. Normally, don't have it print errors when it can't ungarble something, as
-  it should always just be something that was never garbled in the first place.
 
 Add example usage

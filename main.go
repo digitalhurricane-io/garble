@@ -183,12 +183,22 @@ func garbleFlagsToEnv() error {
 		flagName := f.Name
 		flagVal := f.Value.String()
 
-		log.Printf("flagName: %s flagVal: %s", flagName, flagVal)
+		//log.Printf("flagName: %s flagVal: %s", flagName, flagVal)
 
 		// make sure path supplied is an absolute path
-		if flagName == "code-outdir" {
+		switch flagName {
+
+		case "code-outdir":
+			fallthrough
+		case "log-file":
+			fallthrough
+		case "source-path":
+			fallthrough
+		case "output-path":
+			log.Println(flagName)
 			var err error
 			flagVal, err = filepath.Abs(flagVal)
+			log.Println(flagVal)
 			if err != nil {
 				outsideErr = err
 				return
