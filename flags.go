@@ -21,6 +21,12 @@ type buildFlagSet struct {
 
 func (f *buildFlagSet) parse() error {
 
+	// we only want to set flags in the environment if the app is called by the user, not toolexec.
+	// -toolexec gives us an absolute path to the tool binary to run
+	if !filepath.IsAbs(os.Args[1]) {
+		return nil
+	}
+
 	err := f.flagSet.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("Failed to parse args. Err: ", err)

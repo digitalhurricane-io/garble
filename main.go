@@ -250,6 +250,11 @@ func mainErr(buildFSet buildFlagSet, ungarbleFSet ungarbleFlagSet) error {
 		return fmt.Errorf("unknown command: %q", flag.Args()[0])
 	}
 
+	return runTransformations()
+}
+
+// app has been called by toolexec binary, now we are applying the code transformations
+func runTransformations() error {
 	_, tool := filepath.Split(flag.Args()[0])
 	if runtime.GOOS == "windows" {
 		tool = strings.TrimSuffix(tool, ".exe")
