@@ -130,110 +130,75 @@ type importedPkg struct {
 }
 
 func main1() int {
-	log.SetPrefix("[garble] ")
+	//log.SetPrefix("[garble] ")
+	//
+	//// flags for garbling command
+	//flagSet.String("package-name", "", "Name of your package. Same name as at the" +
+	//	" top of the go.mod file.")
+	//
+	//flagSet.String("code-outdir", "/tmp/some-random-dir", "Optional path to output garbled code.")
+	//
+	//flagSet.Bool("include-libs", false, "Pass true to garble libraries as well." +
+	//	" By default only your project code will be garbled.")
+	//
+	//// flags for ungarbling command
+	//flagSet.String("log-file", "", "Path to the log file you want to ungarble. " +
+	//	"Required with the ungarble command")
+	//
+	//flagSet.String("source-path", "", "Path to the directory containing the original source.")
+	//
+	//flagSet.String("salt", "", "The salt output when you garbled the code. Absolutely required.")
+	//
+	//flagSet.String("output-path", "", "Path to output the ungarbled log file." +
+	//	" Defaults to the current working directory.")
+	//
+	//flagSet.Bool("verbose", false, "Show extra logging")
+	//
+	//if err := flagSet.Parse(os.Args[1:]); err != nil {
+	//	return 2
+	//}
+	//
+	//if err := garbleFlagsToEnv(); err != nil {
+	//	log.Println(err)
+	//	return 2
+	//}
 
-	// flags for garbling command
-	flagSet.String("package-name", "", "Name of your package. Same name as at the" +
-		" top of the go.mod file.")
-
-	flagSet.String("code-outdir", "/tmp/some-random-dir", "Optional path to output garbled code.")
-
-	flagSet.Bool("include-libs", false, "Pass true to garble libraries as well." +
-		" By default only your project code will be garbled.")
-
-	// flags for ungarbling command
-	flagSet.String("log-file", "", "Path to the log file you want to ungarble. " +
-		"Required with the ungarble command")
-
-	flagSet.String("source-path", "", "Path to the directory containing the original source.")
-
-	flagSet.String("salt", "", "The salt output when you garbled the code. Absolutely required.")
-
-	flagSet.String("output-path", "", "Path to output the ungarbled log file." +
-		" Defaults to the current working directory.")
-
-	flagSet.Bool("verbose", false, "Show extra logging")
-
-	if err := flagSet.Parse(os.Args[1:]); err != nil {
+	buildFSet := newBuildFlagSet()
+	// also sets flags in environment
+	err := buildFSet.parse()
+	if err != nil {
+		fmt.Println(err)
 		return 2
 	}
 
-	if err := garbleFlagsToEnv(); err != nil {
-		log.Println(err)
+	ungarbleFSet := newUngarbleFlagSet()
+	err = ungarbleFSet.parse()
+	if err != nil {
+		fmt.Println(err)
 		return 2
 	}
 
-	args := flagSet.Args()
-
-	if len(args) < 1 {
-		flagSet.Usage()
+	if len(os.Args) < 1 {
+		fmt.Println("Must be run with 'build' or 'ungarble' subcommand")
+		return 2
 	}
-	if err := mainErr(args); err != nil {
+	if err := mainErr(buildFSet, ungarbleFSet); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	return 0
 }
 
-// Sets flags provided to garble as environmental variables so that they will
-// be available when go build is run.
-// A flag name of "code-outdir" becomes and env variable of "CODE_OUTDIR"
-func garbleFlagsToEnv() error {
-	var outsideErr error
-
-	flagSet.Visit(func(f *flag.Flag) {
-		flagName := f.Name
-		flagVal := f.Value.String()
-
-		// make sure path supplied is an absolute path
-		switch flagName {
-
-		case "code-outdir":
-			fallthrough
-		case "log-file":
-			fallthrough
-		case "source-path":
-			fallthrough
-		case "output-path":
-			var err error
-			flagVal, err = filepath.Abs(flagVal)
-			if err != nil {
-				outsideErr = err
-				return
-			}
-		}
-
-		envVarName := strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
-
-		err := os.Setenv(envVarName, flagVal)
-		if err != nil {
-			outsideErr = err
-		}
-	})
-
-	if outsideErr != nil {
-		log.Println(outsideErr)
-	}
-
-	return outsideErr
-}
-
-func mainErr(args []string) error {
+func mainErr(buildFSet buildFlagSet, ungarbleFSet ungarbleFlagSet) error {
 	// If we recognise an argument, we're not running within -toolexec.
-	switch cmd := args[0]; cmd {
+	switch cmd := os.Args[1]; cmd {
 	case "ungarble":
-		// At this point, we've already set all flags as env variables.
-		// So we'll just pull them from there
-		logFilePath := os.Getenv("LOG_FILE")
-		sourcePath := os.Getenv("SOURCE_PATH")
-		salt := os.Getenv("SALT")
-		outputPath := os.Getenv("OUTPUT_PATH")
 
-		if logFilePath == "" || sourcePath == "" || salt == "" {
+		if *ungarbleFSet.logPath == "" || *ungarbleFSet.sourcePath == "" || *ungarbleFSet.salt == "" {
 			return errors.New("Missing required arguments. 'log-file', 'source-path', and 'salt' are all required")
 		}
 
-		err := ungarble.Ungarble(logFilePath, sourcePath, salt, outputPath)
+		err := ungarble.Ungarble(*ungarbleFSet.logPath, *ungarbleFSet.sourcePath, *ungarbleFSet.salt, *ungarbleFSet.outputPath)
 		if err != nil {
 			return err
 		}
@@ -241,6 +206,8 @@ func mainErr(args []string) error {
 		return nil
 
 	case "build", "test":
+
+		// generate salt for hashing, set as env var, and write to fil
 		if err := setSalt(); err != nil {
 			log.Println(err)
 			return err
@@ -266,20 +233,24 @@ func mainErr(args []string) error {
 			// disabled by default.
 			goArgs = append(goArgs, "-vet=off")
 		}
-		goArgs = append(goArgs, args[1:]...)
+
+		userSuppliedGoFlags := strings.Split(strings.Trim(*buildFSet.goBuildFlags, " "), "")
+
+		goArgs = append(goArgs, userSuppliedGoFlags...)
 
 		cmd := exec.Command("go", goArgs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
 	}
-	if !filepath.IsAbs(args[0]) {
+
+	if !filepath.IsAbs(flag.Args()[0]) {
 		// -toolexec gives us an absolute path to the tool binary to
 		// run, so this is most likely misuse of garble by a user.
-		return fmt.Errorf("unknown command: %q", args[0])
+		return fmt.Errorf("unknown command: %q", flag.Args()[0])
 	}
 
-	_, tool := filepath.Split(args[0])
+	_, tool := filepath.Split(flag.Args()[0])
 	if runtime.GOOS == "windows" {
 		tool = strings.TrimSuffix(tool, ".exe")
 	}
@@ -287,7 +258,7 @@ func mainErr(args []string) error {
 	if !ok {
 		return fmt.Errorf("unknown tool: %q", tool)
 	}
-	transformed := args[1:]
+	transformed := flag.Args()[1:]
 	//log.Println(tool, transformed)
 	if transform != nil {
 		var err error
@@ -302,7 +273,7 @@ func mainErr(args []string) error {
 			}
 		}
 	}()
-	cmd := exec.Command(args[0], transformed...)
+	cmd := exec.Command(flag.Args()[0], transformed...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
