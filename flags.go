@@ -95,13 +95,11 @@ func newBuildFlagSet() buildFlagSet {
 		"(wrapped in single quotes) to be passed to the 'go build' command.")
 
 	flagSet.only = fSet.String("only", "", "Accepts a package name. " +
-		"Only the passed package and it's subpackages will be garbled. " +
-		"Can be used in combination with the 'include' and 'exclude' flag")
+		"Only the package and it's subpackages will be garbled. ")
 
 	flagSet.include = new([]string)
-	fSet.StringArrayVar(flagSet.include, "include", []string{}, "Accepts a package name. The package will be garbled. " +
-		"This flag is useful to ensure a package is not accidentaly skipped." +
-		" It is also useful in combination with the 'only' flag. May be used multiple times to include multiple packages.")
+	fSet.StringArrayVar(flagSet.include, "include", []string{}, "Use with top level packages that don't have a . in the import name" +
+		"For example, if a go.mod module is named myPackage instead of github.com/me/myPackage, it would not be garbled by default.")
 
 	flagSet.exclude = new([]string)
 	fSet.StringArrayVar(flagSet.exclude, "exclude", []string{}, "Accepts a package name. The package will not be garbled. " +

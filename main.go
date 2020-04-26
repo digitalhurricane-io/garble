@@ -19,7 +19,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"mvdan.cc/garble/hashing"
 	stringsG "mvdan.cc/garble/strings"
 	"mvdan.cc/garble/ungarble"
@@ -28,35 +27,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 )
-
-var flagSet = flag.NewFlagSet("garble", flag.ContinueOnError)
-
-func init() { 
-	flagSet.Usage = usage 
-
-	// so that our random strings are actually random
-	rand.Seed(time.Now().UnixNano())
-}
-
-func usage() {
-	fmt.Fprintf(os.Stderr, `
-Usage of garble:
-
-	garble [garble flags] build [build flags] [packages]
-
-Which is equivalent to the longer:
-
-	go build -a -trimpath -toolexec=garble [build flags] [packages]
-
-Garble Flags:
-
-`[1:])
-
-	flagSet.PrintDefaults()
-	os.Exit(2)
-}
 
 func main() { os.Exit(main1()) }
 
@@ -130,38 +101,6 @@ type importedPkg struct {
 }
 
 func main1() int {
-	//log.SetPrefix("[garble] ")
-	//
-	//// flags for garbling command
-	//flagSet.String("package-name", "", "Name of your package. Same name as at the" +
-	//	" top of the go.mod file.")
-	//
-	//flagSet.String("code-outdir", "/tmp/some-random-dir", "Optional path to output garbled code.")
-	//
-	//flagSet.Bool("include-libs", false, "Pass true to garble libraries as well." +
-	//	" By default only your project code will be garbled.")
-	//
-	//// flags for ungarbling command
-	//flagSet.String("log-file", "", "Path to the log file you want to ungarble. " +
-	//	"Required with the ungarble command")
-	//
-	//flagSet.String("source-path", "", "Path to the directory containing the original source.")
-	//
-	//flagSet.String("salt", "", "The salt output when you garbled the code. Absolutely required.")
-	//
-	//flagSet.String("output-path", "", "Path to output the ungarbled log file." +
-	//	" Defaults to the current working directory.")
-	//
-	//flagSet.Bool("verbose", false, "Show extra logging")
-	//
-	//if err := flagSet.Parse(os.Args[1:]); err != nil {
-	//	return 2
-	//}
-	//
-	//if err := garbleFlagsToEnv(); err != nil {
-	//	log.Println(err)
-	//	return 2
-	//}
 
 	buildFSet := newBuildFlagSet()
 	// also sets flags in environment
@@ -354,7 +293,8 @@ func transformCompile(args []string) ([]string, error) {
 		return args, nil
 	}
 
-	if !isOurCode(args) {
+	// filters based on 'only', and 'exclude' command line flags
+	if !shouldGarble(args) {
 		return args, nil
 	}
 
@@ -445,18 +385,23 @@ func transformCompile(args []string) ([]string, error) {
 	return args, nil
 }
 
-// Is it the main package being compiled, or one of it's subpackages?
-// If the user supplied the package-name flag, then we only want to obfuscate
-// their package and it's subpackages
-func isOurCode(args []string) bool {
-	packageName := os.Getenv("PACKAGE_NAME")
-	if packageName == "" {
-		// flag was never set, so we should return true to keep processing the current file
-		return true
+// filters based on 'only' and 'exclude' command line flags
+func shouldGarble(args []string) bool {
+	currentPackageName := pkgNameFromBuildArgs(args)
+
+	onlyThisPkgName := os.Getenv("ONLY")
+	if onlyThisPkgName != "" && !strings.HasPrefix(currentPackageName, onlyThisPkgName) {
+		return false
 	}
 
-	currentPackageName := pkgNameFromBuildArgs(args)
-	return strings.HasPrefix(currentPackageName, packageName)
+	exclude := strings.Split(os.Getenv("EXCLUDE"), ",")
+	for _, pkgName := range exclude {
+		if strings.HasPrefix(currentPackageName, pkgName) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func pkgNameFromBuildArgs(args []string) string {
@@ -470,7 +415,7 @@ func pkgNameFromBuildArgs(args []string) string {
 // create a temp directory
 func getGarbledCodeOutputDir() (string, error) {
 
-	outputDir := os.Getenv("CODE_OUTDIR")
+	outputDir := os.Getenv("CODE_OUT_DIR")
 
 	if outputDir != "" {
 		return outputDir, nil
@@ -652,6 +597,7 @@ func transformGo(file *ast.File, info *types.Info) *ast.File {
 					//reasonNotHashed(node.Name, "Is standard lib", path)
 					return true // std isn't transformed
 				}
+
 				if id := buildInfo.imports[path].buildID; id != "" {
 					garbledPkg, err := garbledImport(path)
 					if err != nil {
@@ -680,20 +626,22 @@ func transformGo(file *ast.File, info *types.Info) *ast.File {
 }
 
 func isStandardLibrary(path string) bool {
-	packageName := os.Getenv("PACKAGE_NAME")
 
 	if path == "main" {
 		// Main packages may not have fully qualified import paths, but
 		// they're not part of the standard library
 		return false
 	
-	} else if packageName != "" && strings.HasPrefix(path, packageName){
-		// We only have a package name if it was supplied as an argument.
-		// But if we have it, we can use it to know whether the path is from standard lib.
-		// TODO: come up with a better check for standard lib
-		return false
-
 	}
+
+	// include user defined packages that don't have a fully qualified import path
+	include := strings.Split(os.Getenv("INCLUDE"), ",")
+	for _, pkgName := range include {
+		if strings.HasPrefix(path, pkgName) {
+			return false
+		}
+	}
+
 	return !strings.Contains(path, ".")
 }
 
