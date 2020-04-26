@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	flag "github.com/spf13/pflag"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -198,50 +197,6 @@ func newUngarbleFlagSet() (ungarbleFlagSet) {
 	return flagSet
 }
 
-// Sets flags provided to garble as environmental variables so that they will
-// be available when go build is run.
-// A flag name of "code-outdir" becomes and env variable of "CODE_OUTDIR"
-func buildFlagsToEnv(fSet *flag.FlagSet) error {
-	var outsideErr error
 
-	fSet.Visit(func(f *flag.Flag) {
-		flagName := f.Name
-		flagVal := f.Value.
-
-		// make sure path supplied is an absolute path
-		switch flagName {
-
-		case "include":
-			fallthrough
-		case "exclude":
-
-
-		case "code-outdir":
-			var err error
-			flagVal, err = filepath.Abs(flagVal)
-			if err != nil {
-				outsideErr = err
-				return
-			}
-		}
-
-		envVarName := strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
-
-		err := os.Setenv(envVarName, flagVal)
-		if err != nil {
-			outsideErr = err
-		}
-	})
-
-	if outsideErr != nil {
-		log.Println(outsideErr)
-	}
-
-	return outsideErr
-}
-
-func ungarbleFlagsToEnv() {
-
-}
 
 
