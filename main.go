@@ -662,12 +662,22 @@ func isStandardLibrary(path string) bool {
 	}
 
 	// include user defined packages that don't have a fully qualified import path
-	include := strings.Split(os.Getenv("INCLUDE"), ",")
-	for _, pkgName := range include {
-		if strings.HasPrefix(path, pkgName) {
-			return false
+	includeEnv := os.Getenv("INCLUDE")
+	if includeEnv != "" { // if we don't do this check, and it's empty, everything will match
+		include := strings.Split(includeEnv, ",")
+		for _, pkgName := range include {
+			if strings.HasPrefix(path, pkgName) {
+				fmt.Println("Has prefix")
+				return false
+			}
 		}
 	}
+
+	onlyEnv := os.Getenv("ONLY")
+	if onlyEnv != "" {
+		return !strings.HasPrefix(path, onlyEnv)
+	}
+
 
 	return !strings.Contains(path, ".")
 }
