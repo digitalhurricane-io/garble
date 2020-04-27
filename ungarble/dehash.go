@@ -2,7 +2,7 @@ package ungarble
 
 import (
 
-	"errors"
+	"github.com/pkg/errors"
 	"golang.org/x/tools/go/ast/astutil"
 	"go/types"
 	"mvdan.cc/garble/hashing"
@@ -47,7 +47,7 @@ func populateFileHashInfo(salt string) error {
 		// parse to *ast.File
 		file, err := parser.ParseFile(fileSet, path, nil, parser.ParseComments)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Err parsing file to *ast.File")
 		}
 
 		files = append(files, file)

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	flag "github.com/spf13/pflag"
 	"os"
@@ -181,11 +181,28 @@ func (f *ungarbleFlagSet) parse() error {
 	}
 
 	if *f.outputPath == "" {
+		// if not supplied, use working dir
 		wd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("Output flag was not passed, and couldn't determine working directory: ", err)
 		}
-		*f.outputPath = wd
+
+		outputPath := filepath.Join(wd, "ungarbled_log.txt")
+
+		*f.outputPath = outputPath
+
+	} else {
+		*f.outputPath, err = filepath.Abs(*f.sourcePath)
+		if err != nil {
+			return errors.Wrap(err, "Could not create absolute path from output path flag")
+		}
+	}
+
+	if *f.sourcePath !=  ""{
+		*f.sourcePath, err = filepath.Abs(*f.sourcePath)
+		if err != nil {
+			return errors.Wrap(err, "Could not create absolute path for source path flag")
+		}
 	}
 
 	return nil

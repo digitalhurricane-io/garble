@@ -20,6 +20,7 @@ import (
 	//"github.com/pkg/errors"
 	//"fmt"
 	"regexp"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -38,13 +39,13 @@ func Ungarble(logFilePath, origSourcePath, salt, outputPath string) error {
 	// get needed info about all source files and put in a map
 	err := populateFileHashInfo(salt)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Failed to populate file hash info")
 	}
 
 	// walk the log file looking for stacktraces, ungarbling them
 	ungarbledContent, err := walkLog(logFilePath, salt)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Failed to walk log")
 	}
 
 	// if outputPath not defined, use working directory
