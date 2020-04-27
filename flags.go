@@ -123,11 +123,11 @@ func newBuildFlagSet() *buildFlagSet {
 		fmt.Fprintf(os.Stderr, `
 Usage of garble build:
 
-	garble build [build flags] [packages]
+	garble build [package] [flags]
 
 Which is equivalent to the longer:
 
-	go build -a -trimpath -toolexec=garble [build flags] [packages]
+	go build -a -trimpath -toolexec=garble [build flags] [package]
 
 The [build flags] referred to above are garble specific flags. To pass
 flags to the 'go build' command, use the flag 'go-build-flags'

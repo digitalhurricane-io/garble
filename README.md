@@ -5,10 +5,11 @@ This is a fork of https://github.com/mvdan/garble with several improvements.
 Improvements over original:
 
 - Ungarble stack traces in log files, outputting a new logfile
-- String obfuscation
-- Garble only project code, not libraries, unless a flag is passed
-- Improved differentiation between standard library code and project code
-- Ability to specify output path for garbled code for inspection
+- String obfuscation by default
+- Flags to include, exclude, or only garble certain packages
+- Flag to specify output path for garbled code for inspection
+
+You can run 'garble build' or 'garble ungarble' for complete usage and list of available flags
 
 Installation:
 
@@ -16,16 +17,16 @@ Installation:
 
 Obfuscate a Go build. Requires Go 1.13 or later.
 
-	garble build [build flags] [packages]
-
-which is equivalent to the longer:
-
-	GARBLE_DIR="$PWD" go build -a -trimpath -toolexec=garble [build flags] [packages]
+	garble build [package] [flags]
 
 Ungarble stack traces in a log file, outputting a new file:
 
-    garble -log-file ./logA.txt --source-path . -salt GCEEndhrmvOFKtRN2Y3U0VceR1SLLlKEvKVvYd2u0LDy4UkQaT ungarble
+    garble ungarble --log-path ./logA.txt --source-path ./ --salt z0hDIP5lGMVlCMQUn3F4Wno70yPdDdJi32Hvj6Q9OB6Tu08LNp
 
+While the original garble project made efforts to support gopath, this fork has not given any thought to supporting gopath.
+Maybe everything still works with gopath. But I only use it with modules.
+
+## Original Readme Text Below
 ### Purpose
 
 Produce a binary that works as well as a regular build, but that has as little
