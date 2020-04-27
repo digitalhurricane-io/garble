@@ -30,11 +30,9 @@ func(f *buildFlagSet) fSet() *flag.FlagSet {
 
 func (f *buildFlagSet) parse() error {
 
-	// we only want to set flags in the environment if the app is called by the user, not toolexec.
-	// -toolexec gives us an absolute path to the tool binary to run
-	if !filepath.IsAbs(os.Args[1]) {
-		return nil
-	}
+	// If you come back to this, and look at it, and think it could get run twice, and you don't want to
+	// set env variables more than once, just know that it can't get run twice, because this method
+	// gets run inside of a switch statement in the mainErr func. Tripped myself up here once.
 
 	err := f.flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -58,6 +56,8 @@ func (f *buildFlagSet) parse() error {
 
 // Set build flags in environment so that they will be available when the app is called by toolexec
 func (f *buildFlagSet) toEnv() error {
+
+	fmt.Println("ONLY: ", *f.only)
 
 	err := os.Setenv("ONLY", *f.only)
 	if err != nil {

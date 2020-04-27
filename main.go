@@ -138,6 +138,7 @@ func main1() int {
 }
 
 func mainErr(flagSet customFlagSet) error {
+
 	// If we recognise an argument, we're not running within -toolexec.
 	switch cmd := os.Args[1]; cmd {
 	case "ungarble":
@@ -360,6 +361,11 @@ func transformCompile(args []string) ([]string, error) {
 	flags = flagSetValue(flags, "-trimpath", outDir+"=>;"+trimpath)
 	// log.Println(flags)
 	args = flags
+
+	// package name is already in stdout buffer I believe. Because if we print out anything at all
+	// while toolexec is running, the package name is printed out
+	log.Print("")
+
 	// TODO: randomize the order of the files
 	for i, file := range files {
 		origName := filepath.Base(filepath.Clean(paths[i]))
