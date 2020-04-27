@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+type customFlagSet interface {
+	parse() error
+	fSet() *flag.FlagSet
+}
+
 type buildFlagSet struct {
 	goBuildFlags *string
 	only *string
@@ -17,6 +22,10 @@ type buildFlagSet struct {
 	codeOutDir *string
 	skipStrings *bool
 	flagSet *flag.FlagSet
+}
+
+func(f *buildFlagSet) fSet() *flag.FlagSet {
+	return f.flagSet
 }
 
 func (f *buildFlagSet) parse() error {
@@ -86,7 +95,7 @@ func (f *buildFlagSet) toEnv() error {
 	return nil
 }
 
-func newBuildFlagSet() buildFlagSet {
+func newBuildFlagSet() *buildFlagSet {
 	fSet := flag.NewFlagSet("garble", flag.ExitOnError)
 
 	flagSet := buildFlagSet{flagSet: fSet}
@@ -98,17 +107,17 @@ func newBuildFlagSet() buildFlagSet {
 		"Only the package and it's subpackages will be garbled. ")
 
 	flagSet.include = new([]string)
-	fSet.StringArrayVar(flagSet.include, "include", []string{}, "Use with top level packages that don't have a . in the import name" +
-		"For example, if a go.mod module is named myPackage instead of github.com/me/myPackage, it would not be garbled by default.")
+	fSet.StringArrayVar(flagSet.include, "include", []string{}, "Use with top level packages that don't have a . in the import name." +
+		" For example, if a go.mod module is named myPackage instead of github.com/me/myPackage, it would not be garbled by default.")
 
 	flagSet.exclude = new([]string)
 	fSet.StringArrayVar(flagSet.exclude, "exclude", []string{}, "Accepts a package name. The package will not be garbled. " +
-		"May be used multiple times to exclude multiple packages")
+		"May be used multiple times to exclude multiple packages.")
 
-	flagSet.codeOutDir = fSet.String("code-out-dir", "", "Path to directory to output garbled code for inspection.")
+	flagSet.codeOutDir = fSet.String("code-out-dir", "", "Directory to output garbled code for inspection.")
 
 	flagSet.skipStrings = fSet.Bool("skip-strings", false, "set this flag if you don't want to obfuscate strings.")
-	flag.Lookup("skip-strings").NoOptDefVal = "true" // if they don't pass a value but they pass the flag, set to true
+	fSet.Lookup("skip-strings").NoOptDefVal = "true" // if they don't pass a value but they pass the flag, set to true
 
 	fSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
@@ -121,11 +130,9 @@ Which is equivalent to the longer:
 	go build -a -trimpath -toolexec=garble [build flags] [packages]
 
 The [build flags] referred to above are garble specific flags. To pass
-flags to the 'go build' command, use the garble build flag 'go-build-flags'
+flags to the 'go build' command, use the flag 'go-build-flags'
 
-All packages except for standard library packages are garbled by default. Package selection
-for garbling is still not perfect. You can pass a package using the 'include' flag to ensure
-a certain package (for example, your project code) is garbled.
+All packages except for standard library packages are garbled by default.
 
 Standard library code is never garbled.
 
@@ -135,7 +142,7 @@ Standard library code is never garbled.
 		os.Exit(2)
 	}
 
-	return flagSet
+	return &flagSet
 }
 
 type ungarbleFlagSet struct {
@@ -144,6 +151,10 @@ type ungarbleFlagSet struct {
 	logPath *string
 	outputPath *string
 	flagSet *flag.FlagSet
+}
+
+func(f *ungarbleFlagSet) fSet() *flag.FlagSet {
+	return f.flagSet
 }
 
 func (f *ungarbleFlagSet) parse() error {
@@ -180,7 +191,7 @@ func (f *ungarbleFlagSet) parse() error {
 	return nil
 }
 
-func newUngarbleFlagSet() (ungarbleFlagSet) {
+func newUngarbleFlagSet() *ungarbleFlagSet {
 	fSet := flag.NewFlagSet("ungarble", flag.ExitOnError)
 
 	flagSet := ungarbleFlagSet{flagSet: fSet}
@@ -198,7 +209,7 @@ func newUngarbleFlagSet() (ungarbleFlagSet) {
 		os.Exit(2)
 	}
 
-	return flagSet
+	return &flagSet
 }
 
 

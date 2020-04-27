@@ -102,36 +102,47 @@ type importedPkg struct {
 
 func main1() int {
 
-	buildFSet := newBuildFlagSet()
-	// also sets flags in environment
-	err := buildFSet.parse()
-	if err != nil {
-		fmt.Println(err)
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "Must be run with 'build' or 'ungarble' subcommand")
 		return 2
 	}
 
-	ungarbleFSet := newUngarbleFlagSet()
-	err = ungarbleFSet.parse()
-	if err != nil {
-		fmt.Println(err)
-		return 2
+	var fSet customFlagSet
+
+	switch os.Args[1] {
+	case "ungarble":
+		fSet = newUngarbleFlagSet()
+		err := fSet.parse()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			fSet.fSet().PrintDefaults()
+			return 2
+		}
+
+	case "build":
+		fSet = newBuildFlagSet()
+		// also sets flags in environment
+		err := fSet.parse()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			fSet.fSet().PrintDefaults()
+			return 2
+		}
 	}
 
-	if len(os.Args) < 1 {
-		fmt.Println("Must be run with 'build' or 'ungarble' subcommand")
-		return 2
-	}
-	if err := mainErr(buildFSet, ungarbleFSet); err != nil {
+	if err := mainErr(fSet); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	return 0
 }
 
-func mainErr(buildFSet buildFlagSet, ungarbleFSet ungarbleFlagSet) error {
+func mainErr(flagSet customFlagSet) error {
 	// If we recognise an argument, we're not running within -toolexec.
 	switch cmd := os.Args[1]; cmd {
 	case "ungarble":
+
+		ungarbleFSet := flagSet.(*ungarbleFlagSet)
 
 		if *ungarbleFSet.logPath == "" || *ungarbleFSet.sourcePath == "" || *ungarbleFSet.salt == "" {
 			return errors.New("Missing required arguments. 'log-file', 'source-path', and 'salt' are all required")
@@ -145,6 +156,14 @@ func mainErr(buildFSet buildFlagSet, ungarbleFSet ungarbleFlagSet) error {
 		return nil
 
 	case "build", "test":
+
+		buildFSet := flagSet.(*buildFlagSet)
+
+		if len(os.Args) < 3 {
+			buildFSet.flagSet.Usage()
+			buildFSet.flagSet.PrintDefaults()
+			return errors.New("You must supply a path to the code to be garbled")
+		}
 
 		// generate salt for hashing, set as env var, and write to fil
 		if err := setSalt(); err != nil {
@@ -183,6 +202,7 @@ func mainErr(buildFSet buildFlagSet, ungarbleFSet ungarbleFlagSet) error {
 		return cmd.Run()
 	}
 
+	flag.Parse()
 	if !filepath.IsAbs(flag.Args()[0]) {
 		// -toolexec gives us an absolute path to the tool binary to
 		// run, so this is most likely misuse of garble by a user.
@@ -394,10 +414,13 @@ func shouldGarble(args []string) bool {
 		return false
 	}
 
-	exclude := strings.Split(os.Getenv("EXCLUDE"), ",")
-	for _, pkgName := range exclude {
-		if strings.HasPrefix(currentPackageName, pkgName) {
-			return false
+	excludeEnvVal := os.Getenv("EXCLUDE")
+	if excludeEnvVal != "" {
+		exclude := strings.Split(os.Getenv("EXCLUDE"), ",")
+		for _, pkgName := range exclude {
+			if strings.HasPrefix(currentPackageName, pkgName) {
+				return false
+			}
 		}
 	}
 
@@ -631,7 +654,6 @@ func isStandardLibrary(path string) bool {
 		// Main packages may not have fully qualified import paths, but
 		// they're not part of the standard library
 		return false
-	
 	}
 
 	// include user defined packages that don't have a fully qualified import path
