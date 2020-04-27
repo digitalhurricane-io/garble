@@ -23,7 +23,7 @@ Ungarble stack traces in a log file, outputting a new file:
 
     garble ungarble --log-path ./logA.txt --source-path ./ --salt z0hDIP5lGMVlCMQUn3F4Wno70yPdDdJi32Hvj6Q9OB6Tu08LNp
 
-The regex used for ungarbling has been tested with standard panic stack traces. And the stack traces output
+The regex used for ungarbling has been tested with standard panic stack traces, and the stack traces output
 in the github.com/pkg/errors library. It hasn't been tested on other libraries.
 
 While the original garble project made efforts to support gopath, this fork has not given any thought to supporting gopath.
