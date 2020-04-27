@@ -401,11 +401,14 @@ func transformCompile(args []string) ([]string, error) {
 	}
 
 	// obfuscate strings
-	err = stringsG.ObfuscateStrings(outDir)
-	if err != nil {
-		log.Println(err)
-		return nil, err
+	if os.Getenv("SKIP_STRINGS") != "TRUE" {
+		err = stringsG.ObfuscateStrings(outDir)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
 	}
+
 
 	return args, nil
 }
@@ -445,8 +448,21 @@ func getGarbledCodeOutputDir() (string, error) {
 
 	outputDir := os.Getenv("CODE_OUT_DIR")
 
+	// The real reason we create a new directory here,
+	// is because if garble build was run twice using the same output directory
+	// for source files, it would tend to hang, using lots of cpu like it was stuck
+	// in a loop. Not sure why, so might as well just create a new dir each time,
+	// and might as well use the salt as the name.
 	if outputDir != "" {
-		return outputDir, nil
+		salt := os.Getenv("SALT")
+
+		finalOutputDir := filepath.Join(outputDir, salt)
+
+		err := os.MkdirAll(finalOutputDir, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+		return finalOutputDir, nil
 	}
 
 	// since they didn't pass a dir, we use a temp dir

@@ -1,9 +1,2 @@
 
-
-
-make it so flags can be passed after 'ungarble' command, instead of before it
-
-Ungarble example:
-garble -log-file ./logA.txt --source-path . -salt GCEEndhrmvOFKtRN2Y3U0VceR1SLLlKEvKVvYd2u0LDy4UkQaT ungarble
-
-Add example usage
+look for salt.txt by default when ungarbling
