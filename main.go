@@ -115,7 +115,7 @@ func main1() int {
 		err := fSet.parse()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			fSet.fSet().PrintDefaults()
+			fSet.fSet().Usage()
 			return 2
 		}
 
@@ -125,7 +125,7 @@ func main1() int {
 		err := fSet.parse()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			fSet.fSet().PrintDefaults()
+			fSet.fSet().Usage()
 			return 2
 		}
 	}
@@ -161,11 +161,10 @@ func mainErr(flagSet customFlagSet) error {
 
 		if len(os.Args) < 3 {
 			buildFSet.flagSet.Usage()
-			buildFSet.flagSet.PrintDefaults()
 			return errors.New("You must supply a path to the code to be garbled")
 		}
 
-		// generate salt for hashing, set as env var, and write to fil
+		// generate salt for hashing, set as env var, and write to file
 		if err := setSalt(); err != nil {
 			log.Println(err)
 			return err

@@ -196,12 +196,13 @@ func newUngarbleFlagSet() *ungarbleFlagSet {
 
 	flagSet := ungarbleFlagSet{flagSet: fSet}
 
-	flagSet.sourcePath = flag.String("source-path", "", "path to the original source that will be used for ungarbling.")
+	flagSet.sourcePath = fSet.String("source-path", "", "path to the original source that will be used for ungarbling.")
 	flagSet.salt = fSet.String("salt", "", "the salt used for hashing, that was output to salt.txt," +
 		" when you originally garbled the code.")
 	flagSet.logPath = fSet.String("log-path", "", "path to the log file.")
 
-	flagSet.outputPath = fSet.String("output-path", "", "path where you want the ungarbled log to be written")
+	flagSet.outputPath = fSet.String("output-path", "", "path where you want the ungarbled log to be written" +
+		" Defaults to the current working directory")
 
 	fSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\ngarble ungarble [ungarble flags]\n\n")
