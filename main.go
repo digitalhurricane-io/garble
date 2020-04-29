@@ -192,7 +192,7 @@ func mainErr(flagSet customFlagSet) error {
 			goArgs = append(goArgs, "-vet=off")
 		}
 
-		userSuppliedGoFlags := strings.Split(strings.Trim(*buildFSet.goBuildFlags, " "), "")
+		userSuppliedGoFlags := strings.Split(strings.Trim(*buildFSet.goBuildFlags, " "), " ")
 
 		goArgs = append(goArgs, userSuppliedGoFlags...)
 

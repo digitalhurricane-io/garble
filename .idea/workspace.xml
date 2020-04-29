@@ -3,11 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="e462411e-de91-454f-895e-36048e7290e6" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flags.go" beforeDir="false" afterPath="$PROJECT_DIR$/flags.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ungarble/dehash.go" beforeDir="false" afterPath="$PROJECT_DIR$/ungarble/dehash.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ungarble/ungarble.go" beforeDir="false" afterPath="$PROJECT_DIR$/ungarble/ungarble.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -68,9 +63,9 @@
       <screen x="71" y="30" width="1849" height="1050" />
     </state>
     <state x="562" y="164" width="857" height="786" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/71.30.1849.1050@71.30.1849.1050" timestamp="1587589525052" />
-    <state x="686" y="296" width="618" height="518" key="find.popup" timestamp="1587948408038">
+    <state x="686" y="296" width="618" height="518" key="find.popup" timestamp="1588002909584">
       <screen x="71" y="30" width="1849" height="1050" />
     </state>
-    <state x="686" y="296" width="618" height="518" key="find.popup/71.30.1849.1050@71.30.1849.1050" timestamp="1587948408038" />
+    <state x="686" y="296" width="618" height="518" key="find.popup/71.30.1849.1050@71.30.1849.1050" timestamp="1588002909584" />
   </component>
 </project>
